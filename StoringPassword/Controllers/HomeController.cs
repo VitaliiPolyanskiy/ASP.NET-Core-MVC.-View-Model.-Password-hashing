@@ -6,8 +6,7 @@ namespace StoringPassword.Controllers
     {
         public ActionResult Index()
         {
-            if(HttpContext.Session.GetString("LastName") != null
-                && HttpContext.Session.GetString("FirstName") != null)
+            if(HttpContext.Session.GetString("Login") != null)
                 return View();
             else
                 return RedirectToAction("Login", "Account");

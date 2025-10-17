@@ -14,7 +14,7 @@
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Home page</a>
                 <a class="navbar-brand" asp-area="" asp-controller="Account" asp-action="Register">Registration</a>
-                 @if (Context.Session.GetString("FirstName") == null)
+                 @if (Context.Session.GetString("Login") == null)
                 {
                     <a class="navbar-brand" asp-area="" asp-controller="Account" asp-action="Login">Logоn</a>
                 }

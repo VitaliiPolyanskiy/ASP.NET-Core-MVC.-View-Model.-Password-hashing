@@ -54,8 +54,9 @@ namespace StoringPassword.Controllers
                     ModelState.AddModelError("", "Wrong login or password!");
                     return View(logon);
                 }
-                HttpContext.Session.SetString("FirstName", user.FirstName);
-                HttpContext.Session.SetString("LastName", user.LastName);
+                HttpContext.Session.SetString("Login", user.Login!);
+                HttpContext.Session.SetString("FirstName", user.FirstName!);
+                HttpContext.Session.SetString("LastName", user.LastName!);
                 return RedirectToAction("Index", "Home");
             }
             return View(logon);
