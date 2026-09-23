@@ -1,15 +1,14 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace StoringPassword.Models
-{
-    // класс модели-представления (view-model)
-    public class LoginModel
-    {
-        [Required]
-        public string? Login { get; set; }
+namespace StoringPassword.Models;
 
-        [Required]
-        [DataType(DataType.Password)]
-        public string? Password { get; set; }
-    }
+// Клас моделі-подання (view-model)
+public class LoginModel
+{
+    [Required(ErrorMessage = "Введіть логін")]
+    public string? Login { get; set; }
+
+    [Required(ErrorMessage = "Введіть пароль")]
+    [DataType(DataType.Password)]
+    public string? Password { get; set; }
 }

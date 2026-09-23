@@ -1,111 +1,90 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using StoringPassword.Models;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace StoringPassword.Controllers
+namespace StoringPassword.Controllers;
+
+public class AccountController : Controller
 {
-    public class AccountController : Controller
+    private readonly UserContext _context;
+
+    public AccountController(UserContext context)
     {
-        private readonly UserContext _context;
+        _context = context;
+    }
 
-        public AccountController(UserContext context)
+    public IActionResult Login() => View();
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Login(LoginModel logon)
+    {
+        if (!ModelState.IsValid) return View(logon);
+
+        // Шукаємо користувача безпосередньо в БД, уникаючи .ToList()
+        var user = await _context.Users.FirstOrDefaultAsync(a => a.Login == logon.Login);
+
+        if (user == null)
         {
-            _context = context;
-        }
-
-        public ActionResult Login()
-        {
-            return View();
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult Login(LoginModel logon)
-        {
-            if (ModelState.IsValid)
-            {
-                if(_context.Users.ToList().Count == 0)
-                {
-                    ModelState.AddModelError("", "Wrong login or password!");
-                    return View(logon);
-                }
-                var users = _context.Users.Where(a => a.Login == logon.Login);
-                if (users.ToList().Count == 0)
-                {
-                    ModelState.AddModelError("", "Wrong login or password!");
-                    return View(logon);
-                }
-                var user = users.First();
-                string? salt = user.Salt;
-
-                //переводим пароль в байт-массив  
-                byte[] password = Encoding.Unicode.GetBytes(salt + logon.Password);
-
-                //вычисляем хеш-представление в байтах  
-                byte[] byteHash = SHA256.HashData(password);
-
-                StringBuilder hash = new StringBuilder(byteHash.Length);
-                for (int i = 0; i < byteHash.Length; i++)
-                    hash.Append(string.Format("{0:X2}", byteHash[i]));
-
-                if (user.Password != hash.ToString())
-                {
-                    ModelState.AddModelError("", "Wrong login or password!");
-                    return View(logon);
-                }
-                HttpContext.Session.SetString("Login", user.Login!);
-                HttpContext.Session.SetString("FirstName", user.FirstName!);
-                HttpContext.Session.SetString("LastName", user.LastName!);
-                return RedirectToAction("Index", "Home");
-            }
+            ModelState.AddModelError(string.Empty, "Невірний логін або пароль!");
             return View(logon);
         }
 
-        public IActionResult Register()
+        // Переводимо пароль у байт-масив
+        byte[] passwordBytes = Encoding.Unicode.GetBytes(user.Salt + logon.Password);
+
+        // Обчислюємо хеш-подання та конвертуємо в рядок (сучасний підхід)
+        string hash = Convert.ToHexString(SHA256.HashData(passwordBytes));
+
+        if (user.Password != hash)
         {
-            return View();
+            ModelState.AddModelError(string.Empty, "Невірний логін або пароль!");
+            return View(logon);
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult Register(RegisterModel reg)
+        HttpContext.Session.SetString("Login", user.Login!);
+        HttpContext.Session.SetString("FirstName", user.FirstName!);
+        HttpContext.Session.SetString("LastName", user.LastName!);
+
+        return RedirectToAction("Index", "Home");
+    }
+
+    public IActionResult Register() => View();
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Register(RegisterModel reg)
+    {
+        if (!ModelState.IsValid) return View(reg);
+
+        // Перевірка, чи не зайнятий логін
+        if (await _context.Users.AnyAsync(u => u.Login == reg.Login))
         {
-            if (ModelState.IsValid)
-            {
-                User user = new User();
-                user.FirstName = reg.FirstName;
-                user.LastName = reg.LastName;
-                user.Login = reg.Login;
-
-                byte[] saltbuf = new byte[16];
-
-                RandomNumberGenerator randomNumberGenerator = RandomNumberGenerator.Create();
-                randomNumberGenerator.GetBytes(saltbuf);
-
-                StringBuilder sb = new StringBuilder(16);
-                for (int i = 0; i < 16; i++)
-                    sb.Append(string.Format("{0:X2}", saltbuf[i]));
-                string salt = sb.ToString();
-
-                //переводим пароль в байт-массив  
-                byte[] password = Encoding.Unicode.GetBytes(salt + reg.Password);
-
-                //вычисляем хеш-представление в байтах  
-                byte[] byteHash = SHA256.HashData(password);
-
-                StringBuilder hash = new StringBuilder(byteHash.Length);
-                for (int i = 0; i < byteHash.Length; i++)
-                    hash.Append(string.Format("{0:X2}", byteHash[i]));
-
-                user.Password = hash.ToString();
-                user.Salt = salt;
-                _context.Users.Add(user);
-                _context.SaveChanges();
-                return RedirectToAction("Login");
-            }
-
+            ModelState.AddModelError(string.Empty, "Користувач з таким логіном вже існує!");
             return View(reg);
         }
+
+        // Генеруємо сіль та хеш сучасними методами без StringBuilder
+        byte[] saltBytes = RandomNumberGenerator.GetBytes(16);
+        string salt = Convert.ToHexString(saltBytes);
+
+        byte[] passwordBytes = Encoding.Unicode.GetBytes(salt + reg.Password);
+        string hash = Convert.ToHexString(SHA256.HashData(passwordBytes));
+
+        var user = new User
+        {
+            FirstName = reg.FirstName,
+            LastName = reg.LastName,
+            Login = reg.Login,
+            Salt = salt,
+            Password = hash
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync(); // Асинхронне збереження
+
+        return RedirectToAction(nameof(Login));
     }
 }

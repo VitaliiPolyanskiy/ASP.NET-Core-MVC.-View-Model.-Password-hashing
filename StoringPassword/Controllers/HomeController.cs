@@ -1,20 +1,20 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace StoringPassword.Controllers
+namespace StoringPassword.Controllers;
+
+public class HomeController : Controller
 {
-    public class HomeController : Controller
+    public IActionResult Index()
     {
-        public ActionResult Index()
-        {
-            if(HttpContext.Session.GetString("Login") != null)
-                return View();
-            else
-                return RedirectToAction("Login", "Account");
-        }
-        public ActionResult Logout()
-        {
-            HttpContext.Session.Clear();
-            return RedirectToAction("Login", "Account");
-        }
+        if (HttpContext.Session.GetString("Login") != null)
+            return View();
+
+        return RedirectToAction("Login", "Account");
+    }
+
+    public IActionResult Logout()
+    {
+        HttpContext.Session.Clear();
+        return RedirectToAction("Login", "Account");
     }
 }
